@@ -541,7 +541,7 @@ When you need inspiration, or better graphical representation, you can look thro
 
 [Geopandas](https://geopandas.org/) is another library that extends pandas data structures, but has methods for when you need to plot geographical data. 
 
-[Bokeh](https://docs.bokeh.org/en/latest/docs/reference/plotting.html) and [Plotly](https://plotly.com/) are good enough quality for web browers. If you're looking for print, stick with Matplotlib, pandas, and Seaborn. 
+[Bokeh](https://docs.bokeh.org/en/latest/docs/reference/plotting.html) and [Plotly](https://plotly.com/python/) are good enough quality for web browers. If you're looking for print, stick with Matplotlib, pandas, and Seaborn. 
 
 Seeing how pandas plotting and Seaborn are built on Matplotlab, it would be good to master those first before moving on. It all depends on your needs. 
 
