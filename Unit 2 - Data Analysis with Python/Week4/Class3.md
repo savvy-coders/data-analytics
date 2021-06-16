@@ -473,21 +473,265 @@ BB    A      3333.0     NaN     NaN       NaN     NaN  4444.0    11.0    NaN    
 >>> 
 ```
 
-## Join
+## Join() and Merge()
 
-You'll learn a lot more about joins in Unit 3, but here is a brief intro to the Pandas .join() method:. 
 
-The .join() method takes two dataframes and joins them on their indexes. They are styled after SQL joins, which are used on SQL datatables. 
+[Join()](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.join.html) allows us to join on an index.
+
+[Merge()](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.merge.html) allows us to use the four standard database joins (inner , outer, left, right), with the default being "inner", and we can specify which column (besides the index) to join. 
 
 The four different types of joins are below, and the documentation is [here](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.join.html).
 
 ![joins](week4images/joins.png)
 
-## Crosstab
+For this lesson, you operate a greenhouse.
 
+```
+>>> plants = pd.DataFrame(
+... data = { 'name': ['petunia', 'geranium', 'pansy', 'begonia', 'tomato', 'okra', 'apple'], 
+...             'type': ['flower', 'flower', 'flower', 'flower', 'vegetable', 'vegetable', 'fruit']}, 
+...                     index=[32, 45, 65, 23, 45, 33, 56])
+>>> plants
+        name       type
+32   petunia     flower
+45  geranium     flower
+65     pansy     flower
+23   begonia     flower
+45    tomato  vegetable
+33      okra  vegetable
+56     apple      fruit
+```
 
+```
+>>> inventory = pd.DataFrame(
+... data = {'plant_id': [34, 54, 65, 23, 11, 34, 22, 65],
+...             'date': ["2021-04-12", "2021-03-28", "2021-05-15", "2021-04-05", "2021-04-06", "2021-03-02", "2021-03-01", "2021-02-28"]})
+>>> inventory
+   plant_id        date
+0        34  2021-04-12
+1        54  2021-03-28
+2        65  2021-05-15
+3        23  2021-04-05
+4        11  2021-04-06
+5        34  2021-03-02
+6        22  2021-03-01
+7        65  2021-02-28
+```
+Let's do a merge with inner join:
+
+```
+>>> pd.merge(left=plants, right=inventory, how='inner', left_index=True, right_on='plant_id')
+      name    type  plant_id        date
+2    pansy  flower        65  2021-05-15
+7    pansy  flower        65  2021-02-28
+3  begonia  flower        23  2021-04-05
+>>> 
+```
+
+Only items with common plant_ids appear in the merge (65 and 23), and 65 appears twice because it was in inventory twice. 
+
+Let's give our indexes proper names, shall we?
+
+```
+>>> plants.index.rename('plant_id', inplace=True)
+>>> plants
+              name       type
+plant_id                     
+32         petunia     flower
+45        geranium     flower
+65           pansy     flower
+23         begonia     flower
+45          tomato  vegetable
+33            okra  vegetable
+56           apple      fruit
+>>> inventory.index.rename('location_id', inplace=True)
+>>> inventory
+             plant_id        date
+location_id                      
+0                  34  2021-04-12
+1                  54  2021-03-28
+2                  65  2021-05-15
+3                  23  2021-04-05
+4                  11  2021-04-06
+5                  34  2021-03-02
+6                  22  2021-03-01
+7                  65  2021-02-28
+>>> 
+```
+When you use the **on** keyword like below, Pandas searches both tables for a matching column name and/or row index to merge the tables with each other. The column must exist in both DataFrames!
+
+It will look something like this:
+
+```
+# using 'on' instead of right_on, and omit left_index=True
+>>> pd.merge(left=plants, right=inventory, how='inner', on='plant_id')
+   plant_id     name    type        date
+0        65    pansy  flower  2021-05-15
+1        65    pansy  flower  2021-02-28
+2        23  begonia  flower  2021-04-05
+>>> 
+```
+
+Left join:
+
+```
+>>> pd.merge(left=plants, right=inventory, how='left', on='plant_id')
+   plant_id      name       type        date
+0        32   petunia     flower         NaN
+1        45  geranium     flower         NaN
+2        65     pansy     flower  2021-05-15
+3        65     pansy     flower  2021-02-28
+4        23   begonia     flower  2021-04-05
+5        45    tomato  vegetable         NaN
+6        33      okra  vegetable         NaN
+7        56     apple      fruit         NaN
+>>> 
+```
+
+Right join:
+
+```
+>>> pd.merge(left=plants, right=inventory, how='right', on='plant_id')
+   plant_id     name    type        date
+0        34      NaN     NaN  2021-04-12
+1        54      NaN     NaN  2021-03-28
+2        65    pansy  flower  2021-05-15
+3        23  begonia  flower  2021-04-05
+4        11      NaN     NaN  2021-04-06
+5        34      NaN     NaN  2021-03-02
+6        22      NaN     NaN  2021-03-01
+7        65    pansy  flower  2021-02-28
+>>> 
+```
+
+Outer join:
+
+```
+>>> pd.merge(left=plants, right=inventory, how='outer', on='plant_id')
+    plant_id      name       type        date
+0         32   petunia     flower         NaN
+1         45  geranium     flower         NaN
+2         45    tomato  vegetable         NaN
+3         65     pansy     flower  2021-05-15
+4         65     pansy     flower  2021-02-28
+5         23   begonia     flower  2021-04-05
+6         33      okra  vegetable         NaN
+7         56     apple      fruit         NaN
+8         34       NaN        NaN  2021-04-12
+9         34       NaN        NaN  2021-03-02
+10        54       NaN        NaN  2021-03-28
+11        11       NaN        NaN  2021-04-06
+12        22       NaN        NaN  2021-03-01
+>>> 
+```
+
+A cool way to tell in which table the data exists is to add an indicator=True. The \_merge column will tell you where the data came from:
+
+```
+>>> outer_with_indicator = pd.merge(left=plants, right=inventory, how='outer', on='plant_id', indicator=True)
+>>> print(outer_with_indicator)
+    plant_id      name       type        date      _merge
+0         32   petunia     flower         NaN   left_only
+1         45  geranium     flower         NaN   left_only
+2         45    tomato  vegetable         NaN   left_only
+3         65     pansy     flower  2021-05-15        both
+4         65     pansy     flower  2021-02-28        both
+5         23   begonia     flower  2021-04-05        both
+6         33      okra  vegetable         NaN   left_only
+7         56     apple      fruit         NaN   left_only
+8         34       NaN        NaN  2021-04-12  right_only
+9         34       NaN        NaN  2021-03-02  right_only
+10        54       NaN        NaN  2021-03-28  right_only
+11        11       NaN        NaN  2021-04-06  right_only
+12        22       NaN        NaN  2021-03-01  right_only
+>>> 
+```
+
+And then you can query, of course:
+
+```
+>>> not_in_right = outer_with_indicator.loc[outer_with_indicator._merge == 'left_only']
+>>> not_in_right
+   plant_id      name       type date     _merge
+0        32   petunia     flower  NaN  left_only
+1        45  geranium     flower  NaN  left_only
+2        45    tomato  vegetable  NaN  left_only
+6        33      okra  vegetable  NaN  left_only
+7        56     apple      fruit  NaN  left_only
+>>> 
+```
+If you're a visual person, [this page](https://www.analyticsvidhya.com/blog/2020/02/joins-in-pandas-master-the-different-types-of-joins-in-python/) is a gold mine of an explanation of joins with merge(). 
+
+Here is a left and right join with join():
+
+```
+>>> joined = plants.join(inventory, how='left')
+>>> joined
+        name       type  plant_id date
+23   begonia     flower       NaN  NaN
+32   petunia     flower       NaN  NaN
+33      okra  vegetable       NaN  NaN
+45  geranium     flower       NaN  NaN
+45    tomato  vegetable       NaN  NaN
+56     apple      fruit       NaN  NaN
+65     pansy     flower       NaN  NaN
+>>> joined = plants.join(inventory, how='right')
+>>> joined
+  name type  plant_id        date
+0  NaN  NaN        34  2021-04-12
+1  NaN  NaN        54  2021-03-28
+2  NaN  NaN        65  2021-05-15
+3  NaN  NaN        23  2021-04-05
+4  NaN  NaN        11  2021-04-06
+5  NaN  NaN        34  2021-03-02
+6  NaN  NaN        22  2021-03-01
+7  NaN  NaN        65  2021-02-28
+>>> 
+```
+
+As you can see, merge() is more versatile! 
+
+[An article on the two](https://towardsdatascience.com/pandas-join-vs-merge-c365fd4fbf49).
+
+## Concat
+
+With concat, you can add multiple dataframes together...
+
+This lady flowers!
+
+```
+>>> plants2 = pd.DataFrame(
+... data = { 'name': ['hyacinth', 'lotus', 'orchid'], 
+... 'type': ['flower', 'flower', 'flower']},
+... index=[44, 62, 14])
+>>> plants2
+        name    type
+44  hyacinth  flower
+62     lotus  flower
+14    orchid  flower
+>>> 
+```
+You can slip .concat() as many dataframes as you'd like. 
+
+```
+>>> frames = [plants, plants2]
+>>> plants3 = pd.concat(frames)
+>>> plants3
+        name       type
+32   petunia     flower
+45  geranium     flower
+65     pansy     flower
+23   begonia     flower
+45    tomato  vegetable
+33      okra  vegetable
+56     apple      fruit
+44  hyacinth     flower
+62     lotus     flower
+14    orchid     flower
+>>> 
+```
 
 ## Combine
 
+Another method that you might use is [combine()](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.combine.html).
 
-## Rearrange
